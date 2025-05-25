@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stack Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to top, #0f2027, #203a43, #2c5364);
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    canvas {
+      display: block;
+      background: #333;
+      touch-action: manipulation;
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let screenWidth = window.innerWidth;
+let screenHeight = window.innerHeight;
+
+canvas.width = screenWidth;
+canvas.height = screenHeight;
+
+let stack = [];
+let blockWidth = canvas.width * 0.5;
+let blockHeight = 30;
+let speed = 2;
+let direction = 1;
+let score = 0;
+let gameOver = false;
+let cameraOffset = 0;
+
+stack.push({
+  x: canvas.width / 2 - blockWidth / 2,
+  y: canvas.height - blockHeight,
+  width: blockWidth,
+  color: getRandomColor()
+});
+
+let current = {
+  x: canvas.width / 2 - blockWidth / 2,
+  y: stack[0].y - blockHeight,
+  width: blockWidth,
+  color: getRandomColor()
+};
+
+function getRandomColor() {
+  const colors = ["#FF6B6B", "#6BCB77", "#4D96FF", "#FFD93D", "#A66DD4"];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function drawBlock(block) {
+  ctx.fillStyle = block.color;
+  ctx.fillRect(block.x, block.y - cameraOffset, block.width, blockHeight);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stack.forEach(drawBlock);
+  drawBlock(current);
+  drawScore();
+}
+
+function drawScore() {
+  ctx.fillStyle = "#fff";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 10, 30);
+}
+
+function update() {
+  if (gameOver) return;
+
+  current.x += speed * direction;
+
+  if (current.x <= 0) {
+    current.x = 0;
+    direction = 1;
+  }
+  if (current.x + current.width >= canvas.width) {
+    current.x = canvas.width - current.width;
+    direction = -1;
+  }
+
+  const targetY = current.y - canvas.height * 0.65;
+  cameraOffset += (targetY - cameraOffset) * 0.1;
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+function placeBlock() {
+  if (gameOver) return;
+
+  const last = stack[stack.length - 1];
+  const delta = current.x - last.x;
+
+  if (Math.abs(delta) < current.width) {
+    current.width -= Math.abs(delta);
+    current.x = delta > 0 ? current.x : last.x;
+
+    stack.push({ ...current });
+
+    current = {
+      x: canvas.width / 2 - current.width / 2,
+      y: current.y - blockHeight,
+      width: current.width,
+      color: getRandomColor()
+    };
+
+    speed += 0.2;
+    score++;
+  } else {
+    gameOver = true;
+    setTimeout(() => {
+      if (confirm("Missed! Game Over!\nFinal Score: " + score + "\nPlay again?")) {
+        location.reload();
+      }
+    }, 100);
+  }
+}
+
+// ✅ Universal input with double-tap fix
+let lastTouchTime = 0;
+
+function handlePlaceBlock() {
+  placeBlock();
+}
+
+canvas.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  lastTouchTime = Date.now();
+  handlePlaceBlock();
+}, { passive: false });
+
+canvas.addEventListener("click", (e) => {
+  if (Date.now() - lastTouchTime < 500) return;
+  handlePlaceBlock();
+});
+
+update();
+</script>
+</body>
+</html>
